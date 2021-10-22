@@ -193,7 +193,7 @@ module Danger
       unless failures.empty? && errors.empty?
         fail('Tests have failed, see below for more information.', sticky: false)
 
-        message = "### Tests: \n\n"
+        message = "### Flaky Tests: \n\n"
         tests = (failures + errors)
         message << get_report_content(tests, headers)
         markdown message
