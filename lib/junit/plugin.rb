@@ -90,6 +90,12 @@ module Danger
     # @return   [Bool]
     attr_accessor :show_skipped_tests
 
+    # An attribute to make the plugin report tests that were re-run successfully
+    # as flakes, rather than failures.
+    #
+    # @return   [Bool]
+    attr_accessor :extract_flakes_from_failures
+
     # An array of symbols that become the columns of your tests,
     # if `nil`, the default, it will be all of the attributes for a single parse
     # or all of the common attributes between multiple files
@@ -132,15 +138,19 @@ module Danger
         failed_tests += failed_suites.map(&:nodes).flatten.select { |node| node.kind_of?(Ox::Element) && node.value == 'testcase' }
       end
 
-      @flakes = failed_tests.group_by do |test|
-        [test.attributes[:classname], test.attributes[:name]].compact.join
-      end.select do |_, tests|
-        tests.count > 1 && tests.any? do |test|
-          node = test.nodes.first
-          node.kind_of?(Ox::Element) && node.value == 'failure'
+      if extract_flakes_from_failures
+        @flakes = failed_tests.group_by do |test|
+          [test.attributes[:classname], test.attributes[:name]].compact.join
+        end.select do |_, tests|
+          tests.count > 1 && tests.any? do |test|
+            node = test.nodes.first
+            node.kind_of?(Ox::Element) && node.value == 'failure'
+          end
+        end.values.flatten.select do |test|
+          test.nodes.count > 0
         end
-      end.values.flatten.select do |test|
-        test.nodes.count > 0
+      else
+        @flakes = []
       end
 
       @failures = failed_tests.select do |test|

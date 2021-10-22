@@ -40,11 +40,22 @@ module Danger
         expect(@junit.skipped.count).to eq 0
       end
 
-      it 'gets the right results for trainer generated files with flakes' do
+      it 'gets the right results for trainer generated files with flakes and extraction switched on' do
+        @junit.extract_flakes_from_failures = true
         @junit.parse 'spec/fixtures/fastlane_trainer_retry.xml'
 
         expect(@junit.failures.count).to eq 1
         expect(@junit.flakes.count).to eq 2
+        expect(@junit.passes.count).to eq 2
+        expect(@junit.errors.count).to eq 0
+        expect(@junit.skipped.count).to eq 0
+      end
+
+      it 'gets the right results for trainer generated files with flakes with flake extraction off' do
+        @junit.parse 'spec/fixtures/fastlane_trainer_retry.xml'
+
+        expect(@junit.failures.count).to eq 3
+        expect(@junit.flakes.count).to eq 0
         expect(@junit.passes.count).to eq 2
         expect(@junit.errors.count).to eq 0
         expect(@junit.skipped.count).to eq 0
