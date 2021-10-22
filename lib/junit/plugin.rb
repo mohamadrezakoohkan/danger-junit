@@ -70,6 +70,11 @@ module Danger
     # @return   [Array<Ox::Element>]
     attr_accessor :failures
 
+    # An array of XML elements that represent tests that failed then passed.
+    #
+    # @return   [Array<Ox::Element>]
+    attr_accessor :flakes
+
     # An array of XML elements that represent passed tests.
     #
     # @return   [Array<Ox::Element>]
@@ -127,11 +132,22 @@ module Danger
         failed_tests += failed_suites.map(&:nodes).flatten.select { |node| node.kind_of?(Ox::Element) && node.value == 'testcase' }
       end
 
+      @flakes = failed_tests.group_by do |test|
+        [test.attributes[:classname], test.attributes[:name]].compact.join
+      end.select do |_, tests|
+        tests.count > 1 && tests.any? do |test|
+          node = test.nodes.first
+          node.kind_of?(Ox::Element) && node.value == 'failure'
+        end
+      end.values.flatten.select do |test|
+        test.nodes.count > 0
+      end
+
       @failures = failed_tests.select do |test|
         test.nodes.count > 0
       end.select do |test|
         node = test.nodes.first
-        node.kind_of?(Ox::Element) && node.value == 'failure'
+        node.kind_of?(Ox::Element) && node.value == 'failure' && @flakes.include?(test) == false
       end
 
       @errors = failed_tests.select do |test| 
@@ -148,7 +164,7 @@ module Danger
         node.kind_of?(Ox::Element) && node.value == 'skipped'
       end
 
-      @passes = tests - @failures - @errors - @skipped
+      @passes = tests - @failures - @flakes - @errors - @skipped
     end
 
     # Causes a build fail if there are test failures,
@@ -164,6 +180,14 @@ module Danger
         message << get_report_content(skipped, skipped_headers)
         markdown message
 
+      end
+
+      unless flakes.empty?
+        warn('Tests were re-run due to failures, see below for more information.')
+
+        message = "### Tests: \n\n"
+        message << get_report_content(flakes, headers)
+        markdown message
       end
 
       unless failures.empty? && errors.empty?
