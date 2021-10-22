@@ -195,7 +195,7 @@ module Danger
       unless flakes.empty?
         warn('Tests were re-run due to failures, see below for more information.')
 
-        message = "### Tests: \n\n"
+        message = "### Flaky Tests: \n\n"
         message << get_report_content(flakes, headers)
         markdown message
       end
@@ -203,7 +203,7 @@ module Danger
       unless failures.empty? && errors.empty?
         fail('Tests have failed, see below for more information.', sticky: false)
 
-        message = "### Flaky Tests: \n\n"
+        message = "### Tests: \n\n"
         tests = (failures + errors)
         message << get_report_content(tests, headers)
         markdown message
