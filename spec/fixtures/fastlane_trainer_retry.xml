@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites tests="2" failures="1">
+<testsuites tests="5" failures="6">
     <testsuite name="EmptyTests" tests="0" failures="0">
     </testsuite>
     <testsuite name="ThemojiUITests" tests="5" failures="2">
