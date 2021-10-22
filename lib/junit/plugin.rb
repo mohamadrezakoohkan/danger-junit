@@ -124,6 +124,7 @@ module Danger
       require 'ox'
       @tests = []
       failed_tests = []
+      failed_suites = []
 
       Array(files).flatten.each do |file|
         raise "No JUnit file was found at #{file}" unless File.exist? file
@@ -134,13 +135,15 @@ module Danger
         suite_root = doc.nodes.first.value == 'testsuites' ? doc.nodes.first : doc
         @tests += suite_root.nodes.map(&:nodes).flatten.select { |node| node.kind_of?(Ox::Element) && node.value == 'testcase' }
 
-        failed_suites = suite_root.nodes.select { |suite| suite[:failures].to_i > 0 || suite[:errors].to_i > 0 }
-        failed_tests += failed_suites.map(&:nodes).flatten.select { |node| node.kind_of?(Ox::Element) && node.value == 'testcase' }
+        file_failed_suites = suite_root.nodes.select { |suite| suite[:failures].to_i > 0 || suite[:errors].to_i > 0 }
+        failed_tests += file_failed_suites.map(&:nodes).flatten.select { |node| node.kind_of?(Ox::Element) && node.value == 'testcase' }
+        failed_suites += file_failed_suites
       end
 
       if extract_flakes_from_failures
         @flakes = failed_tests.group_by do |test|
-          [test.attributes[:classname], test.attributes[:name]].compact.join
+          parent_suite = failed_suites.detect { |suite| suite.nodes.include?(test) }
+          [parent_suite.attributes[:name], test.attributes[:classname], test.attributes[:name]].compact.join
         end.select do |_, tests|
           tests.count > 1 && tests.any? do |test|
             node = test.nodes.first

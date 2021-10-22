@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites tests="5" failures="6">
+<testsuites tests="7" failures="4">
     <testsuite name="EmptyTests" tests="0" failures="0">
     </testsuite>
     <testsuite name="ThemojiUITests" tests="5" failures="2">
@@ -18,6 +18,14 @@
             </failure>
         </testcase>
         <testcase classname="ThemojiUITests" name="testIsFlaky()">
+        </testcase>
+    </testsuite>
+    <testsuite name="SecondTestSuite" tests="2" failures="1">
+        <testcase classname="ThemojiUITests" name="testIsFlaky()">
+        </testcase>
+        <testcase classname="TestTestCase" name="testFailure()">
+            <failure message="XCTAssertTrue failed - /Users/krausefx/Developer/hacking/themoji_copy/ThemojiUITests/ThemojiUITests.swift:24">
+            </failure>
         </testcase>
     </testsuite>
 </testsuites>
