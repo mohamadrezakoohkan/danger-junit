@@ -142,14 +142,22 @@ module Danger
 
       if extract_flakes_from_failures
         @flakes = failed_tests.group_by do |test|
+          # Group failures by Suite/ClassName/Name.
           parent_suite = failed_suites.detect { |suite| suite.nodes.include?(test) }
           [parent_suite.attributes[:name], test.attributes[:classname], test.attributes[:name]].compact.join
         end.select do |_, tests|
-          tests.count > 1 && tests.any? do |test|
+          # Select all failures that have at least one
+          # failure & one success.
+          has_failure = tests.any? do |test|
             node = test.nodes.first
             node.kind_of?(Ox::Element) && node.value == 'failure'
           end
-        end.values.flatten.select do |test|
+          has_success = tests.any? do |test|
+            test.nodes.empty?
+          end
+          has_failure && has_success
+        end.values.flatten
+        .select do |test|
           test.nodes.count > 0
         end
       else
