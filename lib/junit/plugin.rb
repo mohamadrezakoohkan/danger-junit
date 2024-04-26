@@ -70,6 +70,11 @@ module Danger
     # @return   [Array<Ox::Element>]
     attr_accessor :failures
 
+    # An array of XML elements that represent tests that failed then passed.
+    #
+    # @return   [Array<Ox::Element>]
+    attr_accessor :flakes
+
     # An array of XML elements that represent passed tests.
     #
     # @return   [Array<Ox::Element>]
@@ -84,6 +89,12 @@ module Danger
     #
     # @return   [Bool]
     attr_accessor :show_skipped_tests
+
+    # An attribute to make the plugin report tests that were re-run successfully
+    # as flakes, rather than failures.
+    #
+    # @return   [Bool]
+    attr_accessor :extract_flakes_from_failures
 
     # An array of symbols that become the columns of your tests,
     # if `nil`, the default, it will be all of the attributes for a single parse
@@ -113,6 +124,7 @@ module Danger
       require 'ox'
       @tests = []
       failed_tests = []
+      failed_suites = []
 
       Array(files).flatten.each do |file|
         raise "No JUnit file was found at #{file}" unless File.exist? file
@@ -123,15 +135,40 @@ module Danger
         suite_root = doc.nodes.first.value == 'testsuites' ? doc.nodes.first : doc
         @tests += suite_root.nodes.map(&:nodes).flatten.select { |node| node.kind_of?(Ox::Element) && node.value == 'testcase' }
 
-        failed_suites = suite_root.nodes.select { |suite| suite[:failures].to_i > 0 || suite[:errors].to_i > 0 }
-        failed_tests += failed_suites.map(&:nodes).flatten.select { |node| node.kind_of?(Ox::Element) && node.value == 'testcase' }
+        file_failed_suites = suite_root.nodes.select { |suite| suite[:failures].to_i > 0 || suite[:errors].to_i > 0 }
+        failed_tests += file_failed_suites.map(&:nodes).flatten.select { |node| node.kind_of?(Ox::Element) && node.value == 'testcase' }
+        failed_suites += file_failed_suites
+      end
+
+      if extract_flakes_from_failures
+        @flakes = failed_tests.group_by do |test|
+          # Group failures by Suite/ClassName/Name.
+          parent_suite = failed_suites.detect { |suite| suite.nodes.include?(test) }
+          [parent_suite.attributes[:name], test.attributes[:classname], test.attributes[:name]].compact.join
+        end.select do |_, tests|
+          # Select all failures that have at least one
+          # failure & one success.
+          has_failure = tests.any? do |test|
+            node = test.nodes.first
+            node.kind_of?(Ox::Element) && node.value == 'failure'
+          end
+          has_success = tests.any? do |test|
+            test.nodes.empty?
+          end
+          has_failure && has_success
+        end.values.flatten
+        .select do |test|
+          test.nodes.count > 0
+        end
+      else
+        @flakes = []
       end
 
       @failures = failed_tests.select do |test|
         test.nodes.count > 0
       end.select do |test|
         node = test.nodes.first
-        node.kind_of?(Ox::Element) && node.value == 'failure'
+        node.kind_of?(Ox::Element) && node.value == 'failure' && @flakes.include?(test) == false
       end
 
       @errors = failed_tests.select do |test| 
@@ -148,7 +185,7 @@ module Danger
         node.kind_of?(Ox::Element) && node.value == 'skipped'
       end
 
-      @passes = tests - @failures - @errors - @skipped
+      @passes = tests - @failures - @flakes - @errors - @skipped
     end
 
     # Causes a build fail if there are test failures,
@@ -164,6 +201,14 @@ module Danger
         message << get_report_content(skipped, skipped_headers)
         markdown message
 
+      end
+
+      unless flakes.empty?
+        warn('Tests were re-run due to failures, see below for more information.')
+
+        message = "### Flaky Tests: \n\n"
+        message << get_report_content(flakes, headers)
+        markdown message
       end
 
       unless failures.empty? && errors.empty?

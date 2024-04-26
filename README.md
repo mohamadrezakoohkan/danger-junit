@@ -101,11 +101,16 @@ message "#{slowest_test[:time]} took #{slowest_test[:time]} seconds"</pre>
 
 `failures` - An array of XML elements that represent failed tests.
 
+`flakes` - An array of XML elements that represent tests that failed and then passed.
+
 `errors` - An array of XML elements that represent passed tests.
 
 `skipped` - An array of XML elements that represent skipped tests.
 
 `show_skipped_tests` - An attribute to make the plugin show a warning on skipped tests.
+
+`extract_flakes_from_failures` - An attribute to make the plugin extract tests that 
+failed and then passed to the `flakes` array.
 
 `headers` - An array of symbols that become the columns of your tests,
 if `nil`, the default, it will be all of the attributes.
