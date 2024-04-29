@@ -140,7 +140,6 @@ module Danger
         failed_suites += file_failed_suites
       end
 
-      if extract_flakes_from_failures
         @flakes = failed_tests.group_by do |test|
           # Group failures by Suite/ClassName/Name.
           parent_suite = failed_suites.detect { |suite| suite.nodes.include?(test) }
@@ -160,9 +159,10 @@ module Danger
         .select do |test|
           test.nodes.count > 0
         end
-      else
-        @flakes = []
-      end
+
+        puts "Checking failed tests... \n"
+        puts @flakes
+
 
       @failures = failed_tests.select do |test|
         test.nodes.count > 0
